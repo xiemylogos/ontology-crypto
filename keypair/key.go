@@ -386,3 +386,21 @@ func GetP256KeyPairFromWIF(wif []byte) (PrivateKey, error) {
 	pri := ec.ConstructPrivateKey(buf[1:pos-1], elliptic.P256())
 	return &ec.PrivateKey{Algorithm: ec.ECDSA, PrivateKey: pri}, nil
 }
+
+func GetWifFromPrivateKey(priv PrivateKey) string {
+	data := SerializePrivateKey(priv)
+	if len(data) < 34 || data[0] != byte(PK_ECDSA) || data[1] != byte(P256) {
+		return ""
+	}
+	buf := data[1:34]
+	buf[0] = 0x80
+	buf = append(buf, 0x01)
+	sum := sha256.Sum256(buf)
+	sum = sha256.Sum256(sum[:])
+	buf = append(buf, sum[:4]...)
+	bi := new(big.Int).SetBytes(buf)
+	clearBytes(data)
+	clearBytes(buf)
+	wif, _ := base58.BitcoinEncoding.Encode([]byte(bi.Text(10)))
+	return string(wif[:])
+}
